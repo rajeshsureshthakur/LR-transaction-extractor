@@ -1,90 +1,96 @@
-const fs = require('fs');
-const path = require('path');
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
 
-// Function to extract transactions and API calls from a .c file
-function parseCFile(filePath) {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const transactions = [];
-    const lines = content.split('\n');
+public class ParseTransactionsToCsv {
 
-    let currentTransaction = null;
+    public static void main(String[] args) {
+        String folderPath = "./scripts"; // Replace with your folder path containing .c files
+        String outputFilePath = "./output.csv";
 
-    // Regular expressions
-    const transactionStartRegex = /lr_start_transaction\("([^"]+)"\)/; // Matches transaction start
-    const transactionEndRegex = /lr_end_transaction\("([^"]+)"\)/;      // Matches transaction end
-    const apiCallRegex = /web_(custom_request|submit_data|url|reg_save_param)_\w*\(/; // Matches API calls
-
-    lines.forEach((line) => {
-        line = line.trim();
-
-        // Check for transaction start
-        const startMatch = line.match(transactionStartRegex);
-        if (startMatch) {
-            currentTransaction = {
-                name: startMatch[1],
-                apiCalls: [],
-            };
-            transactions.push(currentTransaction);
+        File folder = new File(folderPath);
+        if (!folder.exists() || !folder.isDirectory()) {
+            System.out.println("Folder does not exist: " + folderPath);
+            return;
         }
 
-        // Check for transaction end
-        const endMatch = line.match(transactionEndRegex);
-        if (endMatch && currentTransaction) {
-            currentTransaction = null; // End of current transaction
+        List<String[]> csvData = new ArrayList<>();
+        csvData.add(new String[]{"Script Name", "Transaction Name", "API Path"}); // Header row
+
+        File[] files = folder.listFiles((dir, name) -> name.endsWith(".c"));
+        if (files == null || files.length == 0) {
+            System.out.println("No .c files found in the folder.");
+            return;
         }
 
-        // Check for API calls
-        if (currentTransaction) {
-            const apiMatch = line.match(apiCallRegex);
-            if (apiMatch) {
-                currentTransaction.apiCalls.push(line);
+        for (File file : files) {
+            String scriptName = file.getName().replace(".c", "");
+            try {
+                List<String[]> transactions = parseCFile(file, scriptName);
+                csvData.addAll(transactions);
+            } catch (IOException e) {
+                System.out.println("Error reading file: " + file.getName());
             }
         }
-    });
 
-    return transactions;
-}
-
-// Main function to parse all .c files in a folder
-function parseCFilesInFolder(folderPath) {
-    const files = fs.readdirSync(folderPath);
-    const results = {};
-
-    files.forEach((file) => {
-        const filePath = path.join(folderPath, file);
-        if (path.extname(file) === '.c') {
-            console.log(`Parsing: ${file}`);
-            results[file] = parseCFile(filePath);
+        try {
+            writeCsvFile(outputFilePath, csvData);
+            System.out.println("Results saved to: " + outputFilePath);
+        } catch (IOException e) {
+            System.out.println("Error writing to CSV file: " + outputFilePath);
         }
-    });
-
-    return results;
-}
-
-// Output the results to a file
-function writeResultsToFile(results, outputPath) {
-    const output = [];
-    for (const [fileName, transactions] of Object.entries(results)) {
-        output.push(`File: ${fileName}`);
-        transactions.forEach((transaction) => {
-            output.push(`  Transaction: ${transaction.name}`);
-            transaction.apiCalls.forEach((apiCall) => {
-                output.push(`    API Call: ${apiCall}`);
-            });
-        });
     }
-    fs.writeFileSync(outputPath, output.join('\n'), 'utf-8');
-    console.log(`Results saved to: ${outputPath}`);
+
+    private static List<String[]> parseCFile(File file, String scriptName) throws IOException {
+        List<String[]> results = new ArrayList<>();
+        List<String> lines = Files.readAllLines(file.toPath());
+        Pattern transactionStartPattern = Pattern.compile("lr_start_transaction\\(\"([^\"]+)\"\\)");
+        Pattern transactionEndPattern = Pattern.compile("lr_end_transaction\\(\"([^\"]+)\"\\)");
+        Pattern urlPattern = Pattern.compile("URL=\\{?[^/}]+\\}?(/[^\" ]+)");
+
+        String currentTransaction = null;
+
+        for (String line : lines) {
+            line = line.trim();
+
+            // Check for transaction start
+            Matcher startMatcher = transactionStartPattern.matcher(line);
+            if (startMatcher.find()) {
+                currentTransaction = startMatcher.group(1);
+            }
+
+            // Check for URL in API calls
+            if (currentTransaction != null) {
+                Matcher urlMatcher = urlPattern.matcher(line);
+                if (urlMatcher.find()) {
+                    String apiPath = urlMatcher.group(1); // Extract path part
+                    results.add(new String[]{scriptName, currentTransaction, apiPath});
+                }
+            }
+
+            // Check for transaction end
+            Matcher endMatcher = transactionEndPattern.matcher(line);
+            if (endMatcher.find()) {
+                currentTransaction = null; // End current transaction
+            }
+        }
+
+        return results;
+    }
+
+    private static void writeCsvFile(String filePath, List<String[]> data) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            for (String[] row : data) {
+                writer.write(String.join(",", escapeCsv(row)));
+                writer.newLine();
+            }
+        }
+    }
+
+    private static String[] escapeCsv(String[] row) {
+        return Arrays.stream(row)
+                .map(value -> value.contains(",") ? "\"" + value + "\"" : value)
+                .toArray(String[]::new);
+    }
 }
-
-// Usage
-const folderPath = './scripts'; // Replace with your folder containing .c files
-const outputPath = './output.txt'; // Output file path
-
-if (!fs.existsSync(folderPath)) {
-    console.error(`Folder does not exist: ${folderPath}`);
-    process.exit(1);
-}
-
-const results = parseCFilesInFolder(folderPath);
-writeResultsToFile(results, outputPath);
