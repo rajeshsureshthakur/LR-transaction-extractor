@@ -1,0 +1,90 @@
+const fs = require('fs');
+const path = require('path');
+
+// Function to extract transactions and API calls from a .c file
+function parseCFile(filePath) {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const transactions = [];
+    const lines = content.split('\n');
+
+    let currentTransaction = null;
+
+    // Regular expressions
+    const transactionStartRegex = /lr_start_transaction\("([^"]+)"\)/; // Matches transaction start
+    const transactionEndRegex = /lr_end_transaction\("([^"]+)"\)/;      // Matches transaction end
+    const apiCallRegex = /web_(custom_request|submit_data|url|reg_save_param)_\w*\(/; // Matches API calls
+
+    lines.forEach((line) => {
+        line = line.trim();
+
+        // Check for transaction start
+        const startMatch = line.match(transactionStartRegex);
+        if (startMatch) {
+            currentTransaction = {
+                name: startMatch[1],
+                apiCalls: [],
+            };
+            transactions.push(currentTransaction);
+        }
+
+        // Check for transaction end
+        const endMatch = line.match(transactionEndRegex);
+        if (endMatch && currentTransaction) {
+            currentTransaction = null; // End of current transaction
+        }
+
+        // Check for API calls
+        if (currentTransaction) {
+            const apiMatch = line.match(apiCallRegex);
+            if (apiMatch) {
+                currentTransaction.apiCalls.push(line);
+            }
+        }
+    });
+
+    return transactions;
+}
+
+// Main function to parse all .c files in a folder
+function parseCFilesInFolder(folderPath) {
+    const files = fs.readdirSync(folderPath);
+    const results = {};
+
+    files.forEach((file) => {
+        const filePath = path.join(folderPath, file);
+        if (path.extname(file) === '.c') {
+            console.log(`Parsing: ${file}`);
+            results[file] = parseCFile(filePath);
+        }
+    });
+
+    return results;
+}
+
+// Output the results to a file
+function writeResultsToFile(results, outputPath) {
+    const output = [];
+    for (const [fileName, transactions] of Object.entries(results)) {
+        output.push(`File: ${fileName}`);
+        transactions.forEach((transaction) => {
+            output.push(`  Transaction: ${transaction.name}`);
+            transaction.apiCalls.forEach((apiCall) => {
+                output.push(`    API Call: ${apiCall}`);
+            });
+        });
+    }
+    fs.writeFileSync(outputPath, output.join('\n'), 'utf-8');
+    console.log(`Results saved to: ${outputPath}`);
+}
+
+// Usage
+const folderPath = './scripts'; // Replace with your folder containing .c files
+const outputPath = './output.txt'; // Output file path
+
+if (!fs.existsSync(folderPath)) {
+    console.error(`Folder does not exist: ${folderPath}`);
+    process.exit(1);
+}
+
+const results = parseCFilesInFolder(folderPath);
+writeResultsToFile(results, outputPath);
