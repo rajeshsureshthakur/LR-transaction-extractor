@@ -1,8 +1,5 @@
 import java.io.*;
 import java.util.*;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVWriter;
-import com.opencsv.exceptions.CsvValidationException;
 
 public class CSVProcessor {
     // Define the transaction names to search for
@@ -41,15 +38,18 @@ public class CSVProcessor {
     }
     
     private static void readCSVFile(String filePath, Map<String, List<String>> dataMap) 
-            throws IOException, CsvValidationException {
-        try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
-            String[] nextLine;
-            while ((nextLine = reader.readNext()) != null) {
-                if (nextLine.length >= 2) {
-                    String transactionName = nextLine[0].trim();
+            throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                // Split by comma, handling possible commas within quotes
+                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                
+                if (values.length >= 2) {
+                    String transactionName = values[0].trim().replace("\"", "");
                     // Only store data for transactions we're interested in
                     if (TRANSACTION_NAMES.contains(transactionName)) {
-                        String responseTime = nextLine[1].trim();
+                        String responseTime = values[1].trim().replace("\"", "");
                         dataMap.put(transactionName, Arrays.asList(responseTime));
                     }
                 }
@@ -61,32 +61,53 @@ public class CSVProcessor {
             Map<String, List<String>> file1Data, 
             Map<String, List<String>> file2Data) throws IOException {
         
-        try (CSVWriter writer = new CSVWriter(new FileWriter(outputPath))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath))) {
             // Write header row
-            String[] header = {"Transaction Name", "PTE", "NAM", "IDL", "Prod", "NAM", "IDL", "Achieved X", "NAM", "IDL"};
-            writer.writeNext(header);
+            writer.write("Transaction Name,PTE,NAM,IDL,Prod,NAM,IDL,Achieved X,NAM,IDL\n");
             
-            // Write empty second row (as per requirement)
-            String[] emptyRow = new String[header.length];
-            writer.writeNext(emptyRow);
+            // Write empty second row
+            writer.write("\n");
             
             // Start writing data from row 3, only for specified transactions
             for (String transaction : TRANSACTION_NAMES) {
                 if (file1Data.containsKey(transaction) || file2Data.containsKey(transaction)) {
-                    List<String> row = new ArrayList<>();
-                    row.add(transaction); // Transaction Name
+                    StringBuilder row = new StringBuilder();
+                    
+                    // Add transaction name
+                    row.append(escapeCsvField(transaction)).append(",");
                     
                     // Add data from file1
                     List<String> file1Values = file1Data.getOrDefault(transaction, Arrays.asList("", "", ""));
-                    row.addAll(file1Values);
+                    for (String value : file1Values) {
+                        row.append(escapeCsvField(value)).append(",");
+                    }
                     
                     // Add data from file2
                     List<String> file2Values = file2Data.getOrDefault(transaction, Arrays.asList("", "", ""));
-                    row.addAll(file2Values);
+                    for (String value : file2Values) {
+                        row.append(escapeCsvField(value)).append(",");
+                    }
                     
-                    writer.writeNext(row.toArray(new String[0]));
+                    // Remove trailing comma and add newline
+                    if (row.length() > 0) {
+                        row.setLength(row.length() - 1);
+                    }
+                    row.append("\n");
+                    
+                    writer.write(row.toString());
                 }
             }
         }
+    }
+    
+    // Helper method to properly escape CSV fields
+    private static String escapeCsvField(String field) {
+        if (field == null) {
+            return "";
+        }
+        if (field.contains(",") || field.contains("\"") || field.contains("\n")) {
+            return "\"" + field.replace("\"", "\"\"") + "\"";
+        }
+        return field;
     }
 }
