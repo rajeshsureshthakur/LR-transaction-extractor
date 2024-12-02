@@ -1,0 +1,67 @@
+import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+public class TestDetailsWriter {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        
+        try {
+            // Get user inputs
+            System.out.println("Enter Test Type:");
+            String testType = scanner.nextLine();
+            
+            System.out.println("Enter Test Name:");
+            String testName = scanner.nextLine();
+            
+            System.out.println("Enter EST Start Time (Format: DD/MM/YYYY HH:MM:SS):");
+            String startTimeStr = scanner.nextLine();
+            
+            System.out.println("Enter EST End Time (Format: DD/MM/YYYY HH:MM:SS):");
+            String endTimeStr = scanner.nextLine();
+            
+            // Validate and parse dates
+            Date startTime = dateFormat.parse(startTimeStr);
+            Date endTime = dateFormat.parse(endTimeStr);
+            
+            // Calculate IST times (EST + 5:30 hours)
+            Calendar calStart = Calendar.getInstance();
+            Calendar calEnd = Calendar.getInstance();
+            
+            calStart.setTime(startTime);
+            calEnd.setTime(endTime);
+            
+            calStart.add(Calendar.HOUR_OF_DAY, 5);
+            calStart.add(Calendar.MINUTE, 30);
+            
+            calEnd.add(Calendar.HOUR_OF_DAY, 5);
+            calEnd.add(Calendar.MINUTE, 30);
+            
+            // Write to CSV using FileWriter
+            String outputFile = "test_details.csv";
+            FileWriter writer = new FileWriter(outputFile);
+            
+            // Write the CSV content
+            // Row 1: Test Type and Value
+            writer.write("Test Type," + testType + "\n");
+            
+            // Row 2: Test Duration headers
+            writer.write("Test Duration,Start Time,End Time\n");
+            
+            // Row 3: EST Times
+            writer.write("EST Time," + dateFormat.format(startTime) + "," + dateFormat.format(endTime) + "\n");
+            
+            // Row 4: IST Times
+            writer.write("IST Time," + dateFormat.format(calStart.getTime()) + "," + dateFormat.format(calEnd.getTime()) + "\n");
+            
+            writer.close();
+            System.out.println("CSV file has been created successfully!");
+            
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        } finally {
+            scanner.close();
+        }
+    }
+}
