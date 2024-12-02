@@ -1,0 +1,92 @@
+import java.io.*;
+import java.util.*;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVWriter;
+import com.opencsv.exceptions.CsvValidationException;
+
+public class CSVProcessor {
+    // Define the transaction names to search for
+    private static final Set<String> TRANSACTION_NAMES = new HashSet<>(Arrays.asList(
+        "Transaction1",
+        "Transaction2",
+        "Transaction3"
+        // Add more transaction names here
+    ));
+
+    public static void main(String[] args) {
+        String file1Path = "input1.csv";  // First input file path
+        String file2Path = "input2.csv";  // Second input file path
+        String outputPath = "output.csv"; // Output file path
+        
+        // Store data from both files
+        Map<String, List<String>> file1Data = new HashMap<>();
+        Map<String, List<String>> file2Data = new HashMap<>();
+        
+        try {
+            // Read first file
+            readCSVFile(file1Path, file1Data);
+            
+            // Read second file
+            readCSVFile(file2Path, file2Data);
+            
+            // Write output file only for specified transactions
+            writeOutputFile(outputPath, file1Data, file2Data);
+            
+            System.out.println("Processing completed successfully!");
+            
+        } catch (Exception e) {
+            System.err.println("Error processing files: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private static void readCSVFile(String filePath, Map<String, List<String>> dataMap) 
+            throws IOException, CsvValidationException {
+        try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
+            String[] nextLine;
+            while ((nextLine = reader.readNext()) != null) {
+                if (nextLine.length >= 2) {
+                    String transactionName = nextLine[0].trim();
+                    // Only store data for transactions we're interested in
+                    if (TRANSACTION_NAMES.contains(transactionName)) {
+                        String responseTime = nextLine[1].trim();
+                        dataMap.put(transactionName, Arrays.asList(responseTime));
+                    }
+                }
+            }
+        }
+    }
+    
+    private static void writeOutputFile(String outputPath, 
+            Map<String, List<String>> file1Data, 
+            Map<String, List<String>> file2Data) throws IOException {
+        
+        try (CSVWriter writer = new CSVWriter(new FileWriter(outputPath))) {
+            // Write header row
+            String[] header = {"Transaction Name", "PTE", "NAM", "IDL", "Prod", "NAM", "IDL", "Achieved X", "NAM", "IDL"};
+            writer.writeNext(header);
+            
+            // Write empty second row (as per requirement)
+            String[] emptyRow = new String[header.length];
+            writer.writeNext(emptyRow);
+            
+            // Start writing data from row 3, only for specified transactions
+            for (String transaction : TRANSACTION_NAMES) {
+                if (file1Data.containsKey(transaction) || file2Data.containsKey(transaction)) {
+                    List<String> row = new ArrayList<>();
+                    row.add(transaction); // Transaction Name
+                    
+                    // Add data from file1
+                    List<String> file1Values = file1Data.getOrDefault(transaction, Arrays.asList("", "", ""));
+                    row.addAll(file1Values);
+                    
+                    // Add data from file2
+                    List<String> file2Values = file2Data.getOrDefault(transaction, Arrays.asList("", "", ""));
+                    row.addAll(file2Values);
+                    
+                    writer.writeNext(row.toArray(new String[0]));
+                }
+            }
+        }
+    }
+}
