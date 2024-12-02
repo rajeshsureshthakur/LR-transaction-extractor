@@ -1,0 +1,94 @@
+import java.io.*;
+import java.util.*;
+
+public class CSVProcessor {
+    // Define the 6 transaction names
+    private static final String TRANSACTION1 = "Transaction1";
+    private static final String TRANSACTION2 = "Transaction2";
+    private static final String TRANSACTION3 = "Transaction3";
+    private static final String TRANSACTION4 = "Transaction4";
+    private static final String TRANSACTION5 = "Transaction5";
+    private static final String TRANSACTION6 = "Transaction6";
+
+    // Create variables to store response times for each transaction from both files
+    private static class TransactionData {
+        String file1ResponseTime = "";
+        String file2ResponseTime = "";
+    }
+
+    public static void main(String[] args) {
+        String file1Path = "input1.csv";
+        String file2Path = "input2.csv";
+        
+        // Create a map to store transaction data
+        Map<String, TransactionData> transactionMap = new HashMap<>();
+        
+        // Initialize TransactionData objects for each transaction
+        transactionMap.put(TRANSACTION1, new TransactionData());
+        transactionMap.put(TRANSACTION2, new TransactionData());
+        transactionMap.put(TRANSACTION3, new TransactionData());
+        transactionMap.put(TRANSACTION4, new TransactionData());
+        transactionMap.put(TRANSACTION5, new TransactionData());
+        transactionMap.put(TRANSACTION6, new TransactionData());
+        
+        try {
+            // Read first file
+            readCSVFile(file1Path, transactionMap, true);
+            
+            // Read second file
+            readCSVFile(file2Path, transactionMap, false);
+            
+            // Print the stored values
+            printTransactionValues(transactionMap);
+            
+            System.out.println("Processing completed successfully!");
+            
+        } catch (Exception e) {
+            System.err.println("Error processing files: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private static void readCSVFile(String filePath, Map<String, TransactionData> transactionMap, boolean isFile1) 
+            throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                
+                if (values.length >= 2) {
+                    String transactionName = values[0].trim().replace("\"", "");
+                    TransactionData data = transactionMap.get(transactionName);
+                    
+                    if (data != null) {
+                        String responseTime = values[1].trim().replace("\"", "");
+                        if (isFile1) {
+                            data.file1ResponseTime = responseTime;
+                        } else {
+                            data.file2ResponseTime = responseTime;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private static void printTransactionValues(Map<String, TransactionData> transactionMap) {
+        System.out.println("\nStored Transaction Values:");
+        System.out.println("=========================");
+        
+        // Print values for each transaction
+        printTransactionData(TRANSACTION1, transactionMap.get(TRANSACTION1));
+        printTransactionData(TRANSACTION2, transactionMap.get(TRANSACTION2));
+        printTransactionData(TRANSACTION3, transactionMap.get(TRANSACTION3));
+        printTransactionData(TRANSACTION4, transactionMap.get(TRANSACTION4));
+        printTransactionData(TRANSACTION5, transactionMap.get(TRANSACTION5));
+        printTransactionData(TRANSACTION6, transactionMap.get(TRANSACTION6));
+    }
+    
+    private static void printTransactionData(String transactionName, TransactionData data) {
+        System.out.println("\n" + transactionName + ":");
+        System.out.println("  File 1 Response Time: " + data.file1ResponseTime);
+        System.out.println("  File 2 Response Time: " + data.file2ResponseTime);
+    }
+}
