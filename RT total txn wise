@@ -1,0 +1,95 @@
+import java.io.*;
+import java.util.*;
+
+public class TransactionSummary {
+    public static void main(String[] args) {
+        String inputPath = "output.csv";  // The output file from previous program
+        String summaryPath = "summary.csv";  // New summary file
+
+        try {
+            // Read input file
+            BufferedReader reader = new BufferedReader(new FileReader(inputPath));
+            Map<String, Double> transactionTotals = new HashMap<>();
+            Map<String, List<String>> transactionApis = new HashMap<>();
+            
+            // Skip header
+            String header = reader.readLine();
+            String line;
+            
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+                if (columns.length >= 4) {
+                    String scriptName = columns[0].trim();
+                    String transactionName = columns[1].trim();
+                    String apiName = columns[2].trim();
+                    String responseTime = columns[3].trim();
+                    
+                    // Create a unique key for each transaction
+                    String transactionKey = scriptName + " - " + transactionName;
+                    
+                    // Parse response time
+                    try {
+                        double responseTimeValue = Double.parseDouble(responseTime.replace(",", ""));
+                        
+                        // Add to totals
+                        transactionTotals.merge(transactionKey, responseTimeValue, Double::sum);
+                        
+                        // Store API names for each transaction
+                        transactionApis.computeIfAbsent(transactionKey, k -> new ArrayList<>())
+                                     .add(apiName);
+                        
+                    } catch (NumberFormatException e) {
+                        // Skip if response time is not a valid number (e.g., "N/A")
+                        continue;
+                    }
+                }
+            }
+            reader.close();
+
+            // Write summary file
+            BufferedWriter writer = new BufferedWriter(new FileWriter(summaryPath));
+            
+            // Write header
+            writer.write("Script Name,Transaction Name,Number of APIs,Total Response Time (ms),APIs\n");
+            
+            // Sort transactions for consistent output
+            List<String> sortedTransactions = new ArrayList<>(transactionTotals.keySet());
+            Collections.sort(sortedTransactions);
+            
+            // Write data
+            for (String transactionKey : sortedTransactions) {
+                String[] parts = transactionKey.split(" - ");
+                String scriptName = parts[0];
+                String transactionName = parts[1];
+                double total = transactionTotals.get(transactionKey);
+                List<String> apis = transactionApis.get(transactionKey);
+                
+                StringBuilder line1 = new StringBuilder();
+                line1.append(scriptName).append(",");
+                line1.append(transactionName).append(",");
+                line1.append(apis.size()).append(",");
+                line1.append(String.format("%.2f", total)).append(",");
+                line1.append("\"").append(String.join(", ", apis)).append("\"");
+                
+                writer.write(line1.toString() + "\n");
+            }
+            
+            writer.close();
+            System.out.println("Summary file created successfully at: " + summaryPath);
+            
+            // Print summary to console
+            System.out.println("\nTransaction Summary:");
+            System.out.println("-------------------");
+            for (String transactionKey : sortedTransactions) {
+                System.out.printf("%s: %.2f ms (%d APIs)%n", 
+                    transactionKey, 
+                    transactionTotals.get(transactionKey),
+                    transactionApis.get(transactionKey).size());
+            }
+
+        } catch (IOException e) {
+            System.err.println("Error processing files: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}
