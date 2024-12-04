@@ -11,20 +11,20 @@ public class CSVProcessor {
     private static final String TRANSACTION6 = "Transaction6";
 
     private static class TransactionData {
-        String responseTime = "0";  // Response time from file1 or file2
+        String responseTime = "0";
     }
 
     private static class ThirdFileData {
-        String columnB = "0";
-        String columnC = "0";
-        String columnE = "0";
-        String columnF = "0";
+        double sumColumnB = 0.0;
+        double sumColumnC = 0.0;
+        double sumColumnE = 0.0;
+        double sumColumnF = 0.0;
     }
 
     public static void main(String[] args) {
         String file1Path = "input1.csv";
         String file2Path = "input2.csv";
-        String file3Path = "input3.csv";  // Third file path
+        String file3Path = "input3.csv";
         
         Map<String, TransactionData> transactionMap = new HashMap<>();
         ThirdFileData thirdFileData = new ThirdFileData();
@@ -41,8 +41,8 @@ public class CSVProcessor {
             // Search in both files for transactions
             searchFiles(file1Path, file2Path, transactionMap);
             
-            // Read values from third file
-            readThirdFile(file3Path, thirdFileData);
+            // Calculate sums from third file
+            calculateColumnSums(file3Path, thirdFileData);
             
             // Print all values
             printTransactionValues(transactionMap);
@@ -89,7 +89,7 @@ public class CSVProcessor {
         }
     }
     
-    private static void readThirdFile(String filePath, ThirdFileData thirdFileData) 
+    private static void calculateColumnSums(String filePath, ThirdFileData thirdFileData) 
             throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -104,11 +104,15 @@ public class CSVProcessor {
                 String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
                 
                 if (values.length >= 6) {  // Make sure we have enough columns
-                    // Store values from specific columns (B=1, C=2, E=4, F=5)
-                    thirdFileData.columnB = values[1].trim().replace("\"", "");
-                    thirdFileData.columnC = values[2].trim().replace("\"", "");
-                    thirdFileData.columnE = values[4].trim().replace("\"", "");
-                    thirdFileData.columnF = values[5].trim().replace("\"", "");
+                    try {
+                        // Sum values from columns B(1), C(2), E(4), F(5)
+                        thirdFileData.sumColumnB += Double.parseDouble(values[1].trim().replace("\"", ""));
+                        thirdFileData.sumColumnC += Double.parseDouble(values[2].trim().replace("\"", ""));
+                        thirdFileData.sumColumnE += Double.parseDouble(values[4].trim().replace("\"", ""));
+                        thirdFileData.sumColumnF += Double.parseDouble(values[5].trim().replace("\"", ""));
+                    } catch (NumberFormatException e) {
+                        System.err.println("Warning: Skipping non-numeric value in third file");
+                    }
                 }
             }
         }
@@ -126,11 +130,11 @@ public class CSVProcessor {
     }
     
     private static void printThirdFileValues(ThirdFileData thirdFileData) {
-        System.out.println("\nThird File Values:");
-        System.out.println("=================");
-        System.out.println("Column B: " + thirdFileData.columnB);
-        System.out.println("Column C: " + thirdFileData.columnC);
-        System.out.println("Column E: " + thirdFileData.columnE);
-        System.out.println("Column F: " + thirdFileData.columnF);
+        System.out.println("\nThird File Column Sums:");
+        System.out.println("======================");
+        System.out.println("Sum of Column B: " + thirdFileData.sumColumnB);
+        System.out.println("Sum of Column C: " + thirdFileData.sumColumnC);
+        System.out.println("Sum of Column E: " + thirdFileData.sumColumnE);
+        System.out.println("Sum of Column F: " + thirdFileData.sumColumnF);
     }
 }
