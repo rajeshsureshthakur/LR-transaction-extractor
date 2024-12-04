@@ -1,7 +1,7 @@
 import java.io.*;
 import java.nio.file.*;
-import java.util.regex.*;
 import java.util.*;
+import java.util.regex.*;
 
 public class LoadRunnerFileProcessor {
     public static void main(String[] args) {
@@ -27,17 +27,26 @@ public class LoadRunnerFileProcessor {
                 String modifiedLine = line;
                 
                 if (line.contains("lr_save_string") && line.contains("TmpString")) {
-                    Pattern pattern = Pattern.compile("lr_save_string\\s*\\(\\s*lr_eval_string\\s*\\(\\s*\"([^\"]+)\"\\s*\\)\\s*,\\s*\"TmpString\"");
+                    Pattern pattern = Pattern.compile("(?i)[li]r_save_string\\s*\\(\\s*[li]r_eval_string\\s*\\(\\s*\"([^\"]+)\"\\s*\\)\\s*,\\s*\"TmpString\"");
                     Matcher matcher = pattern.matcher(line);
                     if (matcher.find()) {
                         tmpStrings.put("TmpString", matcher.group(1));
                     }
                     modifiedLines.add(line);
                 }
-                else if (line.contains("lr_start_transaction") && line.contains("{TmpString}")) {
-                    String transactionName = tmpStrings.get("TmpString");
-                    if (transactionName != null) {
-                        modifiedLine = line.replaceAll("lr_eval_string\\s*\\(\\s*\"\\{TmpString\\}\"\\s*\\)", "\"" + transactionName + "\"");
+                else if (line.contains("_start_transaction") && line.contains("{TmpString}")) {
+                    Pattern pattern = Pattern.compile("(?i)([li]r_start_(?:sub_)?transaction)\\s*\\(\\s*[li]r_eval_string\\s*\\(\\s*\"\\{TmpString\\}\"\\s*\\)(,\\s*\"([^\"]+)\")?\\s*\\)");
+                    Matcher matcher = pattern.matcher(line);
+                    if (matcher.find()) {
+                        String transactionType = matcher.group(1);
+                        String transactionName = tmpStrings.get("TmpString");
+                        String subTransactionName = matcher.group(3);
+                        
+                        if (subTransactionName != null) {
+                            modifiedLine = transactionType + "(\"" + subTransactionName + "\")";
+                        } else if (transactionName != null) {
+                            modifiedLine = transactionType + "(\"" + transactionName + "\")";
+                        }
                     }
                     modifiedLines.add(modifiedLine);
                 }
