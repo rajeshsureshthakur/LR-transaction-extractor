@@ -1,0 +1,84 @@
+import java.io.*;
+import java.util.*;
+
+public class ScriptSummary {
+    public static void main(String[] args) {
+        String inputPath = "output.csv";  // Original output file
+        String summaryPath = "script_summary.csv";  // New script-level summary file
+
+        try {
+            // Read input file
+            BufferedReader reader = new BufferedReader(new FileReader(inputPath));
+            Map<String, Double> scriptTotals = new HashMap<>();
+            Map<String, Set<String>> scriptTransactions = new HashMap<>();
+            
+            // Skip header
+            String header = reader.readLine();
+            String line;
+            
+            while ((line = reader.readLine()) != null) {
+                String[] columns = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+                if (columns.length >= 4) {
+                    String scriptName = columns[0].trim();
+                    String transactionName = columns[1].trim();
+                    String responseTime = columns[3].trim();
+                    
+                    // Add transaction to the set for this script
+                    scriptTransactions.computeIfAbsent(scriptName, k -> new TreeSet<>())
+                                    .add(transactionName);
+                    
+                    // Add response time to total
+                    try {
+                        double responseTimeValue = Double.parseDouble(responseTime.replace(",", ""));
+                        scriptTotals.merge(scriptName, responseTimeValue, Double::sum);
+                    } catch (NumberFormatException e) {
+                        // Skip if response time is not a valid number (e.g., "N/A")
+                        continue;
+                    }
+                }
+            }
+            reader.close();
+
+            // Write summary file
+            BufferedWriter writer = new BufferedWriter(new FileWriter(summaryPath));
+            
+            // Write header
+            writer.write("Script Name,Total Response Time (ms),Transaction Count,Transactions\n");
+            
+            // Sort scripts for consistent output
+            List<String> sortedScripts = new ArrayList<>(scriptTotals.keySet());
+            Collections.sort(sortedScripts);
+            
+            // Write data
+            for (String scriptName : sortedScripts) {
+                double total = scriptTotals.get(scriptName);
+                Set<String> transactions = scriptTransactions.get(scriptName);
+                
+                StringBuilder line1 = new StringBuilder();
+                line1.append(scriptName).append(",");
+                line1.append(String.format("%.2f", total)).append(",");
+                line1.append(transactions.size()).append(",");
+                line1.append("\"").append(String.join(", ", transactions)).append("\"");
+                
+                writer.write(line1.toString() + "\n");
+            }
+            
+            writer.close();
+            System.out.println("Script summary file created successfully at: " + summaryPath);
+            
+            // Print summary to console
+            System.out.println("\nScript Summary:");
+            System.out.println("--------------");
+            for (String scriptName : sortedScripts) {
+                System.out.printf("%s: %.2f ms (%d transactions)%n", 
+                    scriptName, 
+                    scriptTotals.get(scriptName),
+                    scriptTransactions.get(scriptName).size());
+            }
+
+        } catch (IOException e) {
+            System.err.println("Error processing files: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}
