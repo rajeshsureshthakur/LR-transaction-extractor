@@ -1,0 +1,119 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
+
+public class LoadRunnerParser {
+    public static void main(String[] args) {
+        String folderPath = "./scripts";
+        String outputFilePath = "./output.csv";
+        
+        try (FileWriter fw = new FileWriter(outputFilePath);
+             BufferedWriter bw = new BufferedWriter(fw)) {
+            bw.write("File Name,Transaction Name,APIs\n");
+            Files.walk(Paths.get(folderPath))
+                .filter(Files::isRegularFile)
+                .filter(path -> path.toString().endsWith(".c"))
+                .forEach(path -> {
+                    try {
+                        processFile(path, bw);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private static void processFile(Path filePath, BufferedWriter writer) throws IOException {
+        String fileName = filePath.getFileName().toString();
+        Map<String, String> tmpStrings = new HashMap<>();
+        String currentTransaction = null;
+        Set<String> currentApis = new HashSet<>();
+        
+        List<String> lines = Files.readAllLines(filePath);
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            String lowerLine = line.toLowerCase();
+            
+            // Handle save string - multiple patterns
+            if (lowerLine.contains("_save_string")) {
+                // Pattern 1: lr_save_string(lr_eval_string("name"), "var")
+                Pattern savePattern1 = Pattern.compile("(?i)[li]r_save_string\\s*\\(\\s*[li]r_eval_string\\s*\\(\\s*\"([^\"]+)\"\\s*\\)\\s*,\\s*\"([^\"]+)\"");
+                // Pattern 2: lr_save_string("name", "var")
+                Pattern savePattern2 = Pattern.compile("(?i)[li]r_save_string\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"");
+                
+                Matcher saveMatcher1 = savePattern1.matcher(line);
+                Matcher saveMatcher2 = savePattern2.matcher(line);
+                
+                if (saveMatcher1.find()) {
+                    tmpStrings.put(saveMatcher1.group(2), saveMatcher1.group(1));
+                } else if (saveMatcher2.find()) {
+                    tmpStrings.put(saveMatcher2.group(2), saveMatcher2.group(1));
+                }
+            }
+            
+            // Handle transaction start - multiple patterns
+            if (lowerLine.contains("_start_transaction")) {
+                // Pattern 1: lr_start_transaction(lr_eval_string("{TmpString}"))
+                Pattern transPattern1 = Pattern.compile("(?i)[li]r_start_transaction\\s*\\(\\s*[li]r_eval_string\\s*\\(\\s*\"\\{([^}]+)\\}\"\\s*\\)");
+                // Pattern 2: lr_start_transaction("TransactionName")
+                Pattern transPattern2 = Pattern.compile("(?i)[li]r_start_transaction\\s*\\(\\s*\"([^\"]+)\"");
+                // Pattern 3: lr_start_transaction(lr_eval_string("TransactionName"))
+                Pattern transPattern3 = Pattern.compile("(?i)[li]r_start_transaction\\s*\\(\\s*[li]r_eval_string\\s*\\(\\s*\"([^\"]+)\"\\s*\\)");
+                
+                Matcher transMatcher1 = transPattern1.matcher(line);
+                Matcher transMatcher2 = transPattern2.matcher(line);
+                Matcher transMatcher3 = transPattern3.matcher(line);
+                
+                if (transMatcher1.find()) {
+                    String varName = transMatcher1.group(1);
+                    currentTransaction = tmpStrings.getOrDefault(varName, varName);
+                } else if (transMatcher2.find()) {
+                    currentTransaction = transMatcher2.group(1);
+                } else if (transMatcher3.find()) {
+                    currentTransaction = transMatcher3.group(1);
+                }
+            }
+            
+            // Handle URL - multiple patterns
+            if (line.contains("URL=")) {
+                // Pattern 1: "URL={HOST}/api/v2/something"
+                Pattern urlPattern1 = Pattern.compile("URL=\\s*\\{[^}]+\\}/?([^\"]+)");
+                // Pattern 2: "URL=http://something/api/v2/something"
+                Pattern urlPattern2 = Pattern.compile("URL=\\s*\"?https?://[^/]+/([^\"]+)");
+                // Pattern 3: "URL=/api/v2/something"
+                Pattern urlPattern3 = Pattern.compile("URL=\\s*\"?/([^\"]+)");
+                
+                Matcher urlMatcher1 = urlPattern1.matcher(line);
+                Matcher urlMatcher2 = urlPattern2.matcher(line);
+                Matcher urlMatcher3 = urlPattern3.matcher(line);
+                
+                if (urlMatcher1.find() && currentTransaction != null) {
+                    currentApis.add(urlMatcher1.group(1).trim());
+                } else if (urlMatcher2.find() && currentTransaction != null) {
+                    currentApis.add(urlMatcher2.group(1).trim());
+                } else if (urlMatcher3.find() && currentTransaction != null) {
+                    currentApis.add(urlMatcher3.group(1).trim());
+                }
+            }
+            
+            // Handle transaction end
+            if (lowerLine.contains("_end_transaction") && currentTransaction != null) {
+                writer.write(String.format("\"%s\",\"%s\",\"%s\"\n",
+                    escapeCSV(fileName),
+                    escapeCSV(currentTransaction),
+                    escapeCSV(String.join(", ", currentApis))
+                ));
+                writer.flush();
+                currentTransaction = null;
+                currentApis.clear();
+            }
+        }
+    }
+    
+    private static String escapeCSV(String field) {
+        return field != null ? field.replace("\"", "\"\"") : "";
+    }
+}
