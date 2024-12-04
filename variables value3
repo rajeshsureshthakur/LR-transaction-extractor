@@ -25,22 +25,24 @@ public class CSVProcessor {
     }
 
     private static class TPHData {
-        double totalTPH1 = 0.0;  // Sum of TPH1 values from both files
-        double totalTPH2 = 0.0;  // Sum of TPH2 values from both files
+        String tph1File1 = "0";  // TPH1 from first file
+        String tph2File1 = "0";  // TPH2 from first file
+        String tph1File2 = "0";  // TPH1 from second file
+        String tph2File2 = "0";  // TPH2 from second file
     }
 
     public static void main(String[] args) {
         String file1Path = "input1.csv";
         String file2Path = "input2.csv";
         String file3Path = "input3.csv";
-        String tphFile1Path = "tph_file1.csv";  // First TPH file
-        String tphFile2Path = "tph_file2.csv";  // Second TPH file
+        String tphFile1Path = "tph_file1.csv";
+        String tphFile2Path = "tph_file2.csv";
         
         Map<String, TransactionData> transactionMap = new HashMap<>();
         ThirdFileData thirdFileData = new ThirdFileData();
         TPHData tphData = new TPHData();
         
-        // Initialize TransactionData objects for each transaction
+        // Initialize TransactionData objects
         transactionMap.put(TRANSACTION1, new TransactionData());
         transactionMap.put(TRANSACTION2, new TransactionData());
         transactionMap.put(TRANSACTION3, new TransactionData());
@@ -53,8 +55,8 @@ public class CSVProcessor {
             searchFiles(file1Path, file2Path, transactionMap);
             calculateColumnSums(file3Path, thirdFileData);
             
-            // Process TPH files
-            searchTPHFiles(tphFile1Path, tphFile2Path, tphData);
+            // Get TPH values
+            getTPHValues(tphFile1Path, tphFile2Path, tphData);
             
             // Print all values
             printTransactionValues(transactionMap);
@@ -69,15 +71,15 @@ public class CSVProcessor {
         }
     }
 
-    private static void searchTPHFiles(String file1Path, String file2Path, TPHData tphData) 
+    private static void getTPHValues(String file1Path, String file2Path, TPHData tphData) 
             throws IOException {
-        // Search in first TPH file
-        processTPHFile(file1Path, tphData);
-        // Search in second TPH file
-        processTPHFile(file2Path, tphData);
+        // Get values from first TPH file
+        processTPHFile(file1Path, tphData, true);
+        // Get values from second TPH file
+        processTPHFile(file2Path, tphData, false);
     }
 
-    private static void processTPHFile(String filePath, TPHData tphData) 
+    private static void processTPHFile(String filePath, TPHData tphData, boolean isFirstFile) 
             throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -95,13 +97,13 @@ public class CSVProcessor {
                     String apiName = values[1].trim().replace("\"", ""); // B column
                     
                     if (apiName.equals(TARGET_API)) {
-                        try {
-                            // Add TPH1 value (C column)
-                            tphData.totalTPH1 += Double.parseDouble(values[2].trim().replace("\"", ""));
-                            // Add TPH2 value (D column)
-                            tphData.totalTPH2 += Double.parseDouble(values[3].trim().replace("\"", ""));
-                        } catch (NumberFormatException e) {
-                            System.err.println("Warning: Invalid TPH value found for API " + TARGET_API);
+                        // Store TPH values based on which file we're reading
+                        if (isFirstFile) {
+                            tphData.tph1File1 = values[2].trim().replace("\"", "");
+                            tphData.tph2File1 = values[3].trim().replace("\"", "");
+                        } else {
+                            tphData.tph1File2 = values[2].trim().replace("\"", "");
+                            tphData.tph2File2 = values[3].trim().replace("\"", "");
                         }
                     }
                 }
@@ -109,13 +111,15 @@ public class CSVProcessor {
         }
     }
 
-    // [Previous methods remain unchanged: searchFiles, searchInFile, calculateColumnSums, printTransactionValues, printThirdFileValues]
+    // [Previous methods remain unchanged]
     
     private static void printTPHValues(TPHData tphData) {
         System.out.println("\nTPH Values for API " + TARGET_API + ":");
         System.out.println("===============================");
-        System.out.println("Total TPH1: " + tphData.totalTPH1);
-        System.out.println("Total TPH2: " + tphData.totalTPH2);
+        System.out.println("File 1 TPH1: " + tphData.tph1File1);
+        System.out.println("File 1 TPH2: " + tphData.tph2File1);
+        System.out.println("File 2 TPH1: " + tphData.tph1File2);
+        System.out.println("File 2 TPH2: " + tphData.tph2File2);
     }
 
     // [Include all previous methods from the last version]
