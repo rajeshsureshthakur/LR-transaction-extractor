@@ -11,8 +11,7 @@ public class CSVProcessor {
     private static final String TRANSACTION6 = "Transaction6";
 
     private static class TransactionData {
-        String file1ResponseTime = "0";  // Default value set to "0"
-        String file2ResponseTime = "0";  // Default value set to "0"
+        String responseTime = "0";  // Single response time for each transaction
     }
 
     public static void main(String[] args) {
@@ -30,8 +29,8 @@ public class CSVProcessor {
         transactionMap.put(TRANSACTION6, new TransactionData());
         
         try {
-            readCSVFile(file1Path, transactionMap, true);
-            readCSVFile(file2Path, transactionMap, false);
+            // Search in both files
+            searchFiles(file1Path, file2Path, transactionMap);
             printTransactionValues(transactionMap);
             
             System.out.println("Processing completed successfully!");
@@ -42,7 +41,15 @@ public class CSVProcessor {
         }
     }
     
-    private static void readCSVFile(String filePath, Map<String, TransactionData> transactionMap, boolean isFile1) 
+    private static void searchFiles(String file1Path, String file2Path, Map<String, TransactionData> transactionMap) 
+            throws IOException {
+        // Search in first file
+        searchInFile(file1Path, transactionMap);
+        // Search in second file for any remaining transactions with value "0"
+        searchInFile(file2Path, transactionMap);
+    }
+    
+    private static void searchInFile(String filePath, Map<String, TransactionData> transactionMap) 
             throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -60,13 +67,9 @@ public class CSVProcessor {
                     String transactionName = values[0].trim().replace("\"", "");
                     TransactionData data = transactionMap.get(transactionName);
                     
-                    if (data != null) {
+                    if (data != null && data.responseTime.equals("0")) {
                         String responseTime = values[1].trim().replace("\"", "");
-                        if (isFile1) {
-                            data.file1ResponseTime = responseTime;
-                        } else {
-                            data.file2ResponseTime = responseTime;
-                        }
+                        data.responseTime = responseTime;
                     }
                 }
             }
@@ -74,15 +77,13 @@ public class CSVProcessor {
     }
     
     private static void printTransactionValues(Map<String, TransactionData> transactionMap) {
-        System.out.println("\nStored Transaction Values:");
+        System.out.println("\nTransaction Response Times:");
         System.out.println("=========================");
         
         for (String transactionName : Arrays.asList(TRANSACTION1, TRANSACTION2, TRANSACTION3, 
                                                   TRANSACTION4, TRANSACTION5, TRANSACTION6)) {
             TransactionData data = transactionMap.get(transactionName);
-            System.out.println("\n" + transactionName + ":");
-            System.out.println("  File 1 Response Time: " + data.file1ResponseTime);
-            System.out.println("  File 2 Response Time: " + data.file2ResponseTime);
+            System.out.println(transactionName + ": " + data.responseTime);
         }
     }
 }
