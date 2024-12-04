@@ -1,0 +1,99 @@
+import java.io.*;
+import java.util.*;
+
+public class ExcelMerger {
+    public static void main(String[] args) {
+        String file1Path = "file1.csv";
+        String file2Path = "file2.csv";
+        String outputPath = "output.csv";
+
+        try {
+            // Read first file - Store all required columns
+            BufferedReader file1Reader = new BufferedReader(new FileReader(file1Path));
+            List<String[]> file1Data = new ArrayList<>();
+            Map<String, String[]> file1Rows = new HashMap<>();
+            String line;
+            
+            // Read and store header
+            String headerLine = file1Reader.readLine();
+            String[] headers = headerLine.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+            
+            while ((line = file1Reader.readLine()) != null) {
+                String[] columns = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+                if (columns.length > 2) {
+                    String[] rowData = new String[3]; // Store A, B, C columns
+                    rowData[0] = columns[0].trim(); // Column A
+                    rowData[1] = columns[1].trim(); // Column B
+                    rowData[2] = columns[2].trim(); // Column C (API Name)
+                    
+                    String normalizedName = normalizeApiName(columns[2].trim());
+                    file1Data.add(rowData);
+                    file1Rows.put(normalizedName, rowData);
+                }
+            }
+            file1Reader.close();
+
+            // Read second file - API names and response times
+            BufferedReader file2Reader = new BufferedReader(new FileReader(file2Path));
+            Map<String, String> apiResponseTimes = new HashMap<>();
+            
+            // Skip header
+            file2Reader.readLine();
+            
+            while ((line = file2Reader.readLine()) != null) {
+                String[] columns = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+                if (columns.length > 5) {
+                    String apiName = columns[0].trim();
+                    String normalizedName = normalizeApiName(apiName);
+                    String responseTime = parseResponseTime(columns[5].trim());
+                    apiResponseTimes.put(normalizedName, responseTime);
+                }
+            }
+            file2Reader.close();
+
+            // Create output file
+            BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath));
+            
+            // Write header
+            writer.write(headers[0] + "," + headers[1] + "," + "API Name,Response Time\n");
+            
+            // Write merged data
+            for (String[] rowData : file1Data) {
+                String normalizedName = normalizeApiName(rowData[2]);
+                String responseTime = apiResponseTimes.getOrDefault(normalizedName, "N/A");
+                writer.write(rowData[0] + "," + rowData[1] + "," + rowData[2] + "," + responseTime + "\n");
+            }
+            
+            writer.close();
+            System.out.println("Output file created successfully at: " + outputPath);
+
+        } catch (IOException e) {
+            System.err.println("Error processing files: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static String normalizeApiName(String apiName) {
+        // Remove quotes, trim spaces, and convert to lowercase for comparison
+        return apiName.replace("\"", "").trim().toLowerCase();
+    }
+
+    private static String parseResponseTime(String value) {
+        try {
+            // Remove quotes if present
+            value = value.replace("\"", "");
+            
+            // Remove commas from number
+            value = value.replace(",", "");
+            
+            // Parse as double to validate and format
+            double number = Double.parseDouble(value);
+            
+            // Format with two decimal places
+            return String.format("%.2f", number);
+            
+        } catch (NumberFormatException e) {
+            return "N/A"; // Return N/A if parsing fails
+        }
+    }
+}
