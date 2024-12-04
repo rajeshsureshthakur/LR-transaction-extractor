@@ -1,0 +1,136 @@
+import java.io.*;
+import java.util.*;
+
+public class CSVProcessor {
+    // Define the 6 transaction names
+    private static final String TRANSACTION1 = "Transaction1";
+    private static final String TRANSACTION2 = "Transaction2";
+    private static final String TRANSACTION3 = "Transaction3";
+    private static final String TRANSACTION4 = "Transaction4";
+    private static final String TRANSACTION5 = "Transaction5";
+    private static final String TRANSACTION6 = "Transaction6";
+
+    private static class TransactionData {
+        String responseTime = "0";  // Response time from file1 or file2
+    }
+
+    private static class ThirdFileData {
+        String columnB = "0";
+        String columnC = "0";
+        String columnE = "0";
+        String columnF = "0";
+    }
+
+    public static void main(String[] args) {
+        String file1Path = "input1.csv";
+        String file2Path = "input2.csv";
+        String file3Path = "input3.csv";  // Third file path
+        
+        Map<String, TransactionData> transactionMap = new HashMap<>();
+        ThirdFileData thirdFileData = new ThirdFileData();
+        
+        // Initialize TransactionData objects for each transaction
+        transactionMap.put(TRANSACTION1, new TransactionData());
+        transactionMap.put(TRANSACTION2, new TransactionData());
+        transactionMap.put(TRANSACTION3, new TransactionData());
+        transactionMap.put(TRANSACTION4, new TransactionData());
+        transactionMap.put(TRANSACTION5, new TransactionData());
+        transactionMap.put(TRANSACTION6, new TransactionData());
+        
+        try {
+            // Search in both files for transactions
+            searchFiles(file1Path, file2Path, transactionMap);
+            
+            // Read values from third file
+            readThirdFile(file3Path, thirdFileData);
+            
+            // Print all values
+            printTransactionValues(transactionMap);
+            printThirdFileValues(thirdFileData);
+            
+            System.out.println("Processing completed successfully!");
+            
+        } catch (Exception e) {
+            System.err.println("Error processing files: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private static void searchFiles(String file1Path, String file2Path, Map<String, TransactionData> transactionMap) 
+            throws IOException {
+        searchInFile(file1Path, transactionMap);
+        searchInFile(file2Path, transactionMap);
+    }
+    
+    private static void searchInFile(String filePath, Map<String, TransactionData> transactionMap) 
+            throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            boolean isFirstLine = true;
+            
+            while ((line = reader.readLine()) != null) {
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue;
+                }
+                
+                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                
+                if (values.length >= 2) {
+                    String transactionName = values[0].trim().replace("\"", "");
+                    TransactionData data = transactionMap.get(transactionName);
+                    
+                    if (data != null && data.responseTime.equals("0")) {
+                        String responseTime = values[1].trim().replace("\"", "");
+                        data.responseTime = responseTime;
+                    }
+                }
+            }
+        }
+    }
+    
+    private static void readThirdFile(String filePath, ThirdFileData thirdFileData) 
+            throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            boolean isFirstLine = true;
+            
+            while ((line = reader.readLine()) != null) {
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue;
+                }
+                
+                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                
+                if (values.length >= 6) {  // Make sure we have enough columns
+                    // Store values from specific columns (B=1, C=2, E=4, F=5)
+                    thirdFileData.columnB = values[1].trim().replace("\"", "");
+                    thirdFileData.columnC = values[2].trim().replace("\"", "");
+                    thirdFileData.columnE = values[4].trim().replace("\"", "");
+                    thirdFileData.columnF = values[5].trim().replace("\"", "");
+                }
+            }
+        }
+    }
+    
+    private static void printTransactionValues(Map<String, TransactionData> transactionMap) {
+        System.out.println("\nTransaction Response Times:");
+        System.out.println("=========================");
+        
+        for (String transactionName : Arrays.asList(TRANSACTION1, TRANSACTION2, TRANSACTION3, 
+                                                  TRANSACTION4, TRANSACTION5, TRANSACTION6)) {
+            TransactionData data = transactionMap.get(transactionName);
+            System.out.println(transactionName + ": " + data.responseTime);
+        }
+    }
+    
+    private static void printThirdFileValues(ThirdFileData thirdFileData) {
+        System.out.println("\nThird File Values:");
+        System.out.println("=================");
+        System.out.println("Column B: " + thirdFileData.columnB);
+        System.out.println("Column C: " + thirdFileData.columnC);
+        System.out.println("Column E: " + thirdFileData.columnE);
+        System.out.println("Column F: " + thirdFileData.columnF);
+    }
+}
