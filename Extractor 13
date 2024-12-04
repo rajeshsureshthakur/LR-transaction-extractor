@@ -1,0 +1,55 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.regex.*;
+import java.util.*;
+
+public class LoadRunnerFileProcessor {
+    public static void main(String[] args) {
+        String folderPath = "./scripts";
+        
+        try {
+            Files.walk(Paths.get(folderPath))
+                .filter(Files::isRegularFile)
+                .filter(path -> path.toString().endsWith(".c"))
+                .forEach(path -> processFile(path));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private static void processFile(Path filePath) {
+        try {
+            List<String> lines = Files.readAllLines(filePath);
+            Map<String, String> tmpStrings = new HashMap<>();
+            List<String> modifiedLines = new ArrayList<>();
+            
+            for (String line : lines) {
+                String modifiedLine = line;
+                
+                if (line.contains("lr_save_string") && line.contains("TmpString")) {
+                    Pattern pattern = Pattern.compile("lr_save_string\\s*\\(\\s*lr_eval_string\\s*\\(\\s*\"([^\"]+)\"\\s*\\)\\s*,\\s*\"TmpString\"");
+                    Matcher matcher = pattern.matcher(line);
+                    if (matcher.find()) {
+                        tmpStrings.put("TmpString", matcher.group(1));
+                    }
+                    modifiedLines.add(line);
+                }
+                else if (line.contains("lr_start_transaction") && line.contains("{TmpString}")) {
+                    String transactionName = tmpStrings.get("TmpString");
+                    if (transactionName != null) {
+                        modifiedLine = line.replaceAll("lr_eval_string\\s*\\(\\s*\"\\{TmpString\\}\"\\s*\\)", "\"" + transactionName + "\"");
+                    }
+                    modifiedLines.add(modifiedLine);
+                }
+                else {
+                    modifiedLines.add(line);
+                }
+            }
+            
+            Files.write(filePath, modifiedLines);
+            
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
