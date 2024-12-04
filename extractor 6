@@ -1,0 +1,109 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
+
+public class LoadRunnerParser {
+    private static final Set<String> LR_REQUEST_TYPES = new HashSet<>(Arrays.asList(
+        "web_custom_request", "web_submit_data", "web_url", "web_submit_form", 
+        "web_link", "web_ajax", "soap_request", "web_service_call", "web_rest",
+        "web_reg_find", "lrs_http_request"
+    ));
+
+    public static void main(String[] args) {
+        String folderPath = "./scripts";
+        String outputFilePath = "./output.csv";
+        
+        try (FileWriter fw = new FileWriter(outputFilePath);
+             BufferedWriter bw = new BufferedWriter(fw)) {
+            bw.write("File Name,Transaction Name,APIs\n");
+            Files.walk(Paths.get(folderPath))
+                .filter(Files::isRegularFile)
+                .filter(path -> path.toString().endsWith(".c"))
+                .forEach(path -> {
+                    try {
+                        processFile(path, bw);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private static void processFile(Path filePath, BufferedWriter writer) throws IOException {
+        String fileName = filePath.getFileName().toString();
+        StringBuilder currentRequest = new StringBuilder();
+        Map<String, String> tmpStrings = new HashMap<>();
+        String currentTransaction = null;
+        Set<String> currentApis = new HashSet<>();
+        boolean insideRequest = false;
+        
+        for (String line : Files.readAllLines(filePath)) {
+            line = line.trim();
+            String lowerLine = line.toLowerCase();
+            
+            // Save temporary strings
+            if (lowerLine.contains("lr_save_string")) {
+                Pattern savePattern = Pattern.compile("lr_save_string\\s*\\(\\s*lr_eval_string\\s*\\(\\s*\"([^\"]+)\"\\s*\\)\\s*,\\s*\"([^\"]+)\"");
+                Matcher saveMatcher = savePattern.matcher(line);
+                if (saveMatcher.find()) {
+                    tmpStrings.put(saveMatcher.group(2), saveMatcher.group(1));
+                }
+            }
+            
+            // Handle transaction start
+            if (lowerLine.contains("lr_start_transaction")) {
+                Pattern transPattern = Pattern.compile("lr_start_transaction\\s*\\(\\s*(?:lr_eval_string\\s*\\(\\s*\"\\{([^}]+)\\}\"\\s*\\)|\"([^\"]+)\")");
+                Matcher transMatcher = transPattern.matcher(line);
+                if (transMatcher.find()) {
+                    String varName = transMatcher.group(1);
+                    String directName = transMatcher.group(2);
+                    currentTransaction = (varName != null) ? tmpStrings.getOrDefault(varName, varName) : directName;
+                    currentApis.clear();
+                }
+            }
+            
+            // Collect request content
+            if (isRequestLine(lowerLine)) {
+                insideRequest = true;
+                currentRequest.setLength(0);
+            }
+            if (insideRequest) {
+                currentRequest.append(line).append(" ");
+                if (line.contains(");")) {
+                    insideRequest = false;
+                    String request = currentRequest.toString();
+                    if (request.contains("URL=")) {
+                        Pattern urlPattern = Pattern.compile("URL=\"[^\"]*?/([^\"]+?)\"");
+                        Matcher urlMatcher = urlPattern.matcher(request);
+                        if (urlMatcher.find() && currentTransaction != null) {
+                            currentApis.add(urlMatcher.group(1).trim());
+                        }
+                    }
+                }
+            }
+            
+            // Handle transaction end
+            if (lowerLine.contains("lr_end_transaction") && currentTransaction != null) {
+                writer.write(String.format("\"%s\",\"%s\",\"%s\"\n",
+                    escapeCSV(fileName),
+                    escapeCSV(currentTransaction),
+                    escapeCSV(String.join(", ", currentApis))
+                ));
+                writer.flush();
+                currentTransaction = null;
+                currentApis.clear();
+            }
+        }
+    }
+
+    private static boolean isRequestLine(String line) {
+        return LR_REQUEST_TYPES.stream().anyMatch(line::contains);
+    }
+    
+    private static String escapeCSV(String field) {
+        return field != null ? field.replace("\"", "\"\"") : "";
+    }
+}
