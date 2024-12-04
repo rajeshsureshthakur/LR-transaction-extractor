@@ -1,0 +1,89 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
+
+public class LoadRunnerParser {
+    public static void main(String[] args) {
+        String folderPath = "./scripts";
+        String outputFilePath = "./output.csv";
+        
+        try (FileWriter fw = new FileWriter(outputFilePath);
+             BufferedWriter bw = new BufferedWriter(fw)) {
+            bw.write("File Name,Transaction Name,APIs\n");
+            
+            Files.walk(Paths.get(folderPath))
+                .filter(Files::isRegularFile)
+                .filter(path -> path.toString().endsWith(".c"))
+                .forEach(path -> {
+                    try {
+                        processFile(path, bw);
+                    } catch (IOException e) {
+                        System.err.println("Error processing file: " + path);
+                        e.printStackTrace();
+                    }
+                });
+        } catch (IOException e) {
+            System.err.println("Error writing to output file");
+            e.printStackTrace();
+        }
+    }
+    
+    private static void processFile(Path filePath, BufferedWriter writer) throws IOException {
+        String fileName = filePath.getFileName().toString();
+        List<String> lines = Files.readAllLines(filePath);
+        StringBuilder content = new StringBuilder();
+        Map<String, String> tmpStrings = new HashMap<>();
+        
+        // First pass: collect all lr_save_string definitions
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            Pattern savePattern = Pattern.compile("lr_save_string\\s*\\(\\s*lr_eval_string\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"\\s*\\)");
+            Matcher saveMatcher = savePattern.matcher(line);
+            if (saveMatcher.find()) {
+                String value = saveMatcher.group(1);
+                String variable = saveMatcher.group(2);
+                tmpStrings.put(variable, value);
+            }
+            content.append(line).append("\n");
+        }
+
+        // Pattern for direct transaction names and variable-based ones
+        Pattern transactionPattern = Pattern.compile(
+            "lr_start_transaction\\s*\\(\\s*(?:\"([^\"]+)\"|lr_eval_string\\s*\\(\\s*\"\\{([^}]+)\\}\"\\s*\\))\\s*\\)(.*?)lr_end_transaction",
+            Pattern.DOTALL
+        );
+        
+        Pattern apiPattern = Pattern.compile("URL=\"[^\"]*?/([^\"]+)\"");
+        
+        Matcher transactionMatcher = transactionPattern.matcher(content);
+        
+        while (transactionMatcher.find()) {
+            String transactionName = transactionMatcher.group(1);
+            String variableName = transactionMatcher.group(2);
+            String transactionContent = transactionMatcher.group(3);
+            
+            // If transaction name is a variable, look up its value
+            if (transactionName == null && variableName != null) {
+                transactionName = tmpStrings.getOrDefault(variableName, variableName);
+            }
+            
+            Set<String> apis = new HashSet<>();
+            Matcher apiMatcher = apiPattern.matcher(transactionContent);
+            
+            while (apiMatcher.find()) {
+                apis.add(apiMatcher.group(1));
+            }
+            
+            writer.write(String.format("\"%s\",\"%s\",\"%s\"\n",
+                escapeCSV(fileName),
+                escapeCSV(transactionName),
+                escapeCSV(String.join(", ", apis))
+            ));
+        }
+    }
+    
+    private static String escapeCSV(String field) {
+        return field.replace("\"", "\"\"");
+    }
+}
