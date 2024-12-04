@@ -1,0 +1,42 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+
+public class LoadRunnerLineExtractor {
+    public static void main(String[] args) {
+        String folderPath = "./scripts";
+        
+        try {
+            Files.walk(Paths.get(folderPath))
+                .filter(Files::isRegularFile)
+                .filter(path -> path.toString().endsWith(".c"))
+                .forEach(path -> processFile(path));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private static void processFile(Path filePath) {
+        try {
+            String outputPath = filePath.toString().replace(".c", "_output.txt");
+            List<String> lines = Files.readAllLines(filePath);
+            List<String> outputLines = new ArrayList<>();
+            
+            for (String line : lines) {
+                line = line.trim();
+                String lowerLine = line.toLowerCase();
+                
+                if (lowerLine.contains("lr_save_string") || 
+                    lowerLine.contains("lr_start_transaction") || 
+                    lowerLine.contains("url=") || 
+                    lowerLine.contains("lr_end_transaction")) {
+                    outputLines.add(line);
+                }
+            }
+            
+            Files.write(Paths.get(outputPath), outputLines);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
