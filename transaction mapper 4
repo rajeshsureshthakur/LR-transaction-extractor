@@ -1,0 +1,103 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
+
+public class LoadRunnerParser {
+    private static final Set<String> LR_REQUEST_TYPES = new HashSet<>(Arrays.asList(
+        "web_custom_request",
+        "web_submit_data",
+        "web_url",
+        "web_submit_form",
+        "web_link",
+        "web_ajax",
+        "soap_request",
+        "web_service_call",
+        "web_rest",
+        "web_reg_find",
+        "lrs_http_request"
+    ));
+
+    public static void main(String[] args) {
+        String folderPath = "./scripts";
+        String outputFilePath = "./output.csv";
+        
+        try (FileWriter fw = new FileWriter(outputFilePath);
+             BufferedWriter bw = new BufferedWriter(fw)) {
+            bw.write("File Name,Transaction Name,APIs\n");
+            
+            Files.walk(Paths.get(folderPath))
+                .filter(Files::isRegularFile)
+                .filter(path -> path.toString().endsWith(".c"))
+                .forEach(path -> processFile(path, bw));
+        } catch (IOException e) {
+            System.err.println("Error writing to output file");
+            e.printStackTrace();
+        }
+    }
+    
+    private static void processFile(Path filePath, BufferedWriter writer) {
+        try {
+            String fileName = filePath.getFileName().toString();
+            List<String> lines = Files.readAllLines(filePath);
+            Map<String, String> tmpStrings = new HashMap<>();
+            String currentTransaction = null;
+            Set<String> currentApis = new HashSet<>();
+            
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i).trim();
+                String lowerLine = line.toLowerCase();
+                
+                if (lowerLine.startsWith("lr_save_string")) {
+                    Pattern savePattern = Pattern.compile("lr_save_string\\s*\\(\\s*lr_eval_string\\s*\\(\\s*\"([^\"]+)\"\\s*\\)\\s*,\\s*\"([^\"]+)\"\\s*\\)");
+                    Matcher saveMatcher = savePattern.matcher(line);
+                    if (saveMatcher.find()) {
+                        tmpStrings.put(saveMatcher.group(2), saveMatcher.group(1));
+                    }
+                }
+                else if (lowerLine.contains("lr_start_transaction")) {
+                    Pattern transPattern = Pattern.compile("lr_start_transaction\\s*\\(\\s*lr_eval_string\\s*\\(\\s*\"\\{([^}]+)\\}\"\\s*\\)\\s*\\)");
+                    Matcher transMatcher = transPattern.matcher(line);
+                    if (transMatcher.find()) {
+                        currentTransaction = tmpStrings.getOrDefault(transMatcher.group(1), transMatcher.group(1));
+                        currentApis.clear();
+                    }
+                }
+                else if (isRequestLine(lowerLine)) {
+                    // Look ahead for URL in next lines
+                    for (int j = i; j < Math.min(i + 5, lines.size()); j++) {
+                        String nextLine = lines.get(j).trim();
+                        if (nextLine.contains("URL=")) {
+                            Pattern urlPattern = Pattern.compile("URL=\"[^\"]*?/([^\"]+)\"");
+                            Matcher urlMatcher = urlPattern.matcher(nextLine);
+                            if (urlMatcher.find() && currentTransaction != null) {
+                                currentApis.add(urlMatcher.group(1));
+                            }
+                            break;
+                        }
+                    }
+                }
+                else if (lowerLine.contains("lr_end_transaction") && currentTransaction != null) {
+                    writer.write(String.format("\"%s\",\"%s\",\"%s\"\n",
+                        escapeCSV(fileName),
+                        escapeCSV(currentTransaction),
+                        escapeCSV(String.join(", ", currentApis))
+                    ));
+                    currentTransaction = null;
+                    currentApis.clear();
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error processing file: " + filePath);
+            e.printStackTrace();
+        }
+    }
+
+    private static boolean isRequestLine(String line) {
+        return LR_REQUEST_TYPES.stream().anyMatch(line::contains);
+    }
+    
+    private static String escapeCSV(String field) {
+        return field.replace("\"", "\"\"");
+    }
+}
