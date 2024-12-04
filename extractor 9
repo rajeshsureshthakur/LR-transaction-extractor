@@ -1,0 +1,93 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
+
+public class LoadRunnerParser {
+    public static void main(String[] args) {
+        String folderPath = "./scripts";
+        String outputFilePath = "./output.csv";
+        
+        try (FileWriter fw = new FileWriter(outputFilePath);
+             BufferedWriter bw = new BufferedWriter(fw)) {
+            bw.write("File Name,Transaction Name,APIs\n");
+            Files.walk(Paths.get(folderPath))
+                .filter(Files::isRegularFile)
+                .filter(path -> path.toString().endsWith(".c"))
+                .forEach(path -> {
+                    try {
+                        processFile(path, bw);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private static void processFile(Path filePath, BufferedWriter writer) throws IOException {
+        String fileName = filePath.getFileName().toString();
+        Map<String, String> tmpStrings = new HashMap<>();
+        String currentTransaction = null;
+        Set<String> currentApis = new HashSet<>();
+        
+        List<String> lines = Files.readAllLines(filePath);
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            String lowerLine = line.toLowerCase();
+            
+            System.out.println("Processing line: " + line);
+
+            if (lowerLine.contains("save_string")) {
+                System.out.println("Found save_string line");
+                Pattern savePattern = Pattern.compile("(?i)[li]r_save_string\\s*\\([li]r_eval_string\\s*\\(\\s*\"([^\"]+)\"\\s*\\)\\s*,\\s*\"([^\"]+)\"");
+                Matcher saveMatcher = savePattern.matcher(line);
+                if (saveMatcher.find()) {
+                    String value = saveMatcher.group(1);
+                    String variable = saveMatcher.group(2);
+                    tmpStrings.put(variable, value);
+                    System.out.println("Saved: " + variable + " = " + value);
+                }
+            }
+            
+            if (lowerLine.contains("start_transaction")) {
+                System.out.println("Found start_transaction line");
+                Pattern transPattern = Pattern.compile("(?i)[li]r_start_transaction\\s*\\([li]r_eval_string\\s*\\(\\s*\"\\{([^}]+)\\}\"\\s*\\)\\)");
+                Matcher transMatcher = transPattern.matcher(line);
+                if (transMatcher.find()) {
+                    String varName = transMatcher.group(1);
+                    currentTransaction = tmpStrings.getOrDefault(varName, varName);
+                    System.out.println("Transaction started: " + currentTransaction);
+                }
+            }
+            
+            if (lowerLine.contains("url=")) {
+                System.out.println("Found URL line");
+                Pattern urlPattern = Pattern.compile("URL=\\{[^}]+\\}/([^\"\\s,]+)");
+                Matcher urlMatcher = urlPattern.matcher(line);
+                if (urlMatcher.find() && currentTransaction != null) {
+                    String api = urlMatcher.group(1);
+                    currentApis.add(api);
+                    System.out.println("Added API: " + api);
+                }
+            }
+            
+            if (lowerLine.contains("end_transaction") && currentTransaction != null) {
+                System.out.println("Writing transaction: " + currentTransaction + " with APIs: " + currentApis);
+                writer.write(String.format("\"%s\",\"%s\",\"%s\"\n",
+                    escapeCSV(fileName),
+                    escapeCSV(currentTransaction),
+                    escapeCSV(String.join(", ", currentApis))
+                ));
+                writer.flush();
+                currentTransaction = null;
+                currentApis.clear();
+            }
+        }
+    }
+    
+    private static String escapeCSV(String field) {
+        return field != null ? field.replace("\"", "\"\"") : "";
+    }
+}
