@@ -1,0 +1,84 @@
+import java.io.*;
+import java.util.*;
+
+public class ExcelMerger {
+    public static void main(String[] args) {
+        // Replace these paths with your actual file paths
+        String file1Path = "file1.csv";
+        String file2Path = "file2.csv";
+        String outputPath = "output.csv";
+
+        try {
+            // Read first file - API names from column C
+            BufferedReader file1Reader = new BufferedReader(new FileReader(file1Path));
+            List<String> file1Data = new ArrayList<>();
+            String line;
+            
+            // Skip header
+            file1Reader.readLine();
+            
+            while ((line = file1Reader.readLine()) != null) {
+                String[] columns = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)"); // Handle commas within quotes
+                if (columns.length > 2) {
+                    file1Data.add(columns[2].trim());  // Column C
+                }
+            }
+            file1Reader.close();
+
+            // Read second file - API names and response times
+            BufferedReader file2Reader = new BufferedReader(new FileReader(file2Path));
+            Map<String, String> apiResponseTimes = new HashMap<>();
+            
+            // Skip header
+            file2Reader.readLine();
+            
+            while ((line = file2Reader.readLine()) != null) {
+                String[] columns = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)"); // Handle commas within quotes
+                if (columns.length > 5) {
+                    String apiName = columns[0].trim();
+                    String responseTime = parseResponseTime(columns[5].trim());
+                    apiResponseTimes.put(apiName, responseTime);
+                }
+            }
+            file2Reader.close();
+
+            // Create output file
+            BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath));
+            
+            // Write header
+            writer.write("API Name,Response Time\n");
+            
+            // Write merged data
+            for (String apiName : file1Data) {
+                String responseTime = apiResponseTimes.getOrDefault(apiName, "N/A");
+                writer.write(apiName + "," + responseTime + "\n");
+            }
+            
+            writer.close();
+            System.out.println("Output file created successfully at: " + outputPath);
+
+        } catch (IOException e) {
+            System.err.println("Error processing files: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static String parseResponseTime(String value) {
+        try {
+            // Remove quotes if present
+            value = value.replace("\"", "");
+            
+            // Remove commas from number
+            value = value.replace(",", "");
+            
+            // Parse as double to validate and format
+            double number = Double.parseDouble(value);
+            
+            // Format with two decimal places
+            return String.format("%.2f", number);
+            
+        } catch (NumberFormatException e) {
+            return "N/A"; // Return N/A if parsing fails
+        }
+    }
+}
