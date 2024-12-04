@@ -1,0 +1,122 @@
+import java.io.*;
+import java.util.*;
+
+public class CSVProcessor {
+    // Define the 6 transaction names
+    private static final String TRANSACTION1 = "Transaction1";
+    private static final String TRANSACTION2 = "Transaction2";
+    private static final String TRANSACTION3 = "Transaction3";
+    private static final String TRANSACTION4 = "Transaction4";
+    private static final String TRANSACTION5 = "Transaction5";
+    private static final String TRANSACTION6 = "Transaction6";
+
+    // Define the API to search for
+    private static final String TARGET_API = "YourAPIName"; // Replace with your API name
+
+    private static class TransactionData {
+        String responseTime = "0";
+    }
+
+    private static class ThirdFileData {
+        double sumColumnB = 0.0;
+        double sumColumnC = 0.0;
+        double sumColumnE = 0.0;
+        double sumColumnF = 0.0;
+    }
+
+    private static class TPHData {
+        double totalTPH1 = 0.0;  // Sum of TPH1 values from both files
+        double totalTPH2 = 0.0;  // Sum of TPH2 values from both files
+    }
+
+    public static void main(String[] args) {
+        String file1Path = "input1.csv";
+        String file2Path = "input2.csv";
+        String file3Path = "input3.csv";
+        String tphFile1Path = "tph_file1.csv";  // First TPH file
+        String tphFile2Path = "tph_file2.csv";  // Second TPH file
+        
+        Map<String, TransactionData> transactionMap = new HashMap<>();
+        ThirdFileData thirdFileData = new ThirdFileData();
+        TPHData tphData = new TPHData();
+        
+        // Initialize TransactionData objects for each transaction
+        transactionMap.put(TRANSACTION1, new TransactionData());
+        transactionMap.put(TRANSACTION2, new TransactionData());
+        transactionMap.put(TRANSACTION3, new TransactionData());
+        transactionMap.put(TRANSACTION4, new TransactionData());
+        transactionMap.put(TRANSACTION5, new TransactionData());
+        transactionMap.put(TRANSACTION6, new TransactionData());
+        
+        try {
+            // Process original files
+            searchFiles(file1Path, file2Path, transactionMap);
+            calculateColumnSums(file3Path, thirdFileData);
+            
+            // Process TPH files
+            searchTPHFiles(tphFile1Path, tphFile2Path, tphData);
+            
+            // Print all values
+            printTransactionValues(transactionMap);
+            printThirdFileValues(thirdFileData);
+            printTPHValues(tphData);
+            
+            System.out.println("Processing completed successfully!");
+            
+        } catch (Exception e) {
+            System.err.println("Error processing files: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void searchTPHFiles(String file1Path, String file2Path, TPHData tphData) 
+            throws IOException {
+        // Search in first TPH file
+        processTPHFile(file1Path, tphData);
+        // Search in second TPH file
+        processTPHFile(file2Path, tphData);
+    }
+
+    private static void processTPHFile(String filePath, TPHData tphData) 
+            throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            boolean isFirstLine = true;
+            
+            while ((line = reader.readLine()) != null) {
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue;
+                }
+                
+                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                
+                if (values.length >= 4) {  // Need at least 4 columns (A,B,C,D)
+                    String apiName = values[1].trim().replace("\"", ""); // B column
+                    
+                    if (apiName.equals(TARGET_API)) {
+                        try {
+                            // Add TPH1 value (C column)
+                            tphData.totalTPH1 += Double.parseDouble(values[2].trim().replace("\"", ""));
+                            // Add TPH2 value (D column)
+                            tphData.totalTPH2 += Double.parseDouble(values[3].trim().replace("\"", ""));
+                        } catch (NumberFormatException e) {
+                            System.err.println("Warning: Invalid TPH value found for API " + TARGET_API);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // [Previous methods remain unchanged: searchFiles, searchInFile, calculateColumnSums, printTransactionValues, printThirdFileValues]
+    
+    private static void printTPHValues(TPHData tphData) {
+        System.out.println("\nTPH Values for API " + TARGET_API + ":");
+        System.out.println("===============================");
+        System.out.println("Total TPH1: " + tphData.totalTPH1);
+        System.out.println("Total TPH2: " + tphData.totalTPH2);
+    }
+
+    // [Include all previous methods from the last version]
+}
