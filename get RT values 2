@@ -12,15 +12,19 @@ public class ExcelMerger {
             // Read first file - API names from column C
             BufferedReader file1Reader = new BufferedReader(new FileReader(file1Path));
             List<String> file1Data = new ArrayList<>();
+            Map<String, String> file1OriginalNames = new HashMap<>(); // Store original names
             String line;
             
             // Skip header
             file1Reader.readLine();
             
             while ((line = file1Reader.readLine()) != null) {
-                String[] columns = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)"); // Handle commas within quotes
+                String[] columns = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
                 if (columns.length > 2) {
-                    file1Data.add(columns[2].trim());  // Column C
+                    String apiName = columns[2].trim();
+                    String normalizedName = normalizeApiName(apiName);
+                    file1Data.add(normalizedName);
+                    file1OriginalNames.put(normalizedName, apiName); // Store original format
                 }
             }
             file1Reader.close();
@@ -33,11 +37,12 @@ public class ExcelMerger {
             file2Reader.readLine();
             
             while ((line = file2Reader.readLine()) != null) {
-                String[] columns = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)"); // Handle commas within quotes
+                String[] columns = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
                 if (columns.length > 5) {
                     String apiName = columns[0].trim();
+                    String normalizedName = normalizeApiName(apiName);
                     String responseTime = parseResponseTime(columns[5].trim());
-                    apiResponseTimes.put(apiName, responseTime);
+                    apiResponseTimes.put(normalizedName, responseTime);
                 }
             }
             file2Reader.close();
@@ -49,9 +54,10 @@ public class ExcelMerger {
             writer.write("API Name,Response Time\n");
             
             // Write merged data
-            for (String apiName : file1Data) {
-                String responseTime = apiResponseTimes.getOrDefault(apiName, "N/A");
-                writer.write(apiName + "," + responseTime + "\n");
+            for (String normalizedName : file1Data) {
+                String originalName = file1OriginalNames.get(normalizedName);
+                String responseTime = apiResponseTimes.getOrDefault(normalizedName, "N/A");
+                writer.write(originalName + "," + responseTime + "\n");
             }
             
             writer.close();
@@ -61,6 +67,11 @@ public class ExcelMerger {
             System.err.println("Error processing files: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private static String normalizeApiName(String apiName) {
+        // Remove quotes, trim spaces, and convert to lowercase for comparison
+        return apiName.replace("\"", "").trim().toLowerCase();
     }
 
     private static String parseResponseTime(String value) {
