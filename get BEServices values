@@ -2,33 +2,46 @@ import java.io.*;
 import java.util.*;
 
 public class ServiceMetricsReader {
-    private static final String TARGET_SERVICE = "YourServiceName"; // Replace with your service name
+    private static final String TARGET_SERVICE1 = "YourServiceName1"; 
+    private static final String TARGET_SERVICE2 = "YourServiceName2"; 
 
     public static void main(String[] args) {
         String heapFile = "heap.csv";
         String memoryFile = "memory.csv";
         String gcFile = "gc.csv";
         
-        String heapValue = "0";
-        String memoryValue = "0";
-        String gcValue = "0";
+        String heapValue1 = "0", heapValue2 = "0";
+        String memoryValue1 = "0", memoryValue2 = "0";
+        String gcValue1 = "0", gcValue2 = "0";
         
         try {
-            heapValue = readMetricValue(heapFile);
-            memoryValue = readMetricValue(memoryFile);
-            gcValue = readMetricValue(gcFile);
+            // Read values for first service
+            heapValue1 = readMetricValue(heapFile, TARGET_SERVICE1);
+            memoryValue1 = readMetricValue(memoryFile, TARGET_SERVICE1);
+            gcValue1 = readMetricValue(gcFile, TARGET_SERVICE1);
             
-            System.out.println("Service: " + TARGET_SERVICE);
-            System.out.println("Heap: " + heapValue);
-            System.out.println("Memory: " + memoryValue);
-            System.out.println("GC: " + gcValue);
+            // Read values for second service
+            heapValue2 = readMetricValue(heapFile, TARGET_SERVICE2);
+            memoryValue2 = readMetricValue(memoryFile, TARGET_SERVICE2);
+            gcValue2 = readMetricValue(gcFile, TARGET_SERVICE2);
+            
+            // Print values for first service
+            System.out.println("Service: " + TARGET_SERVICE1);
+            System.out.println("Heap: " + heapValue1);
+            System.out.println("Memory: " + memoryValue1);
+            System.out.println("GC: " + gcValue1);
+            
+            System.out.println("\nService: " + TARGET_SERVICE2);
+            System.out.println("Heap: " + heapValue2);
+            System.out.println("Memory: " + memoryValue2);
+            System.out.println("GC: " + gcValue2);
             
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
         }
     }
     
-    private static String readMetricValue(String filePath) throws IOException {
+    private static String readMetricValue(String filePath, String serviceName) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
             boolean isFirstLine = true;
@@ -42,8 +55,8 @@ public class ServiceMetricsReader {
                 String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
                 
                 if (values.length >= 3) {
-                    String serviceName = values[0].trim().replace("\"", "");
-                    if (serviceName.equals(TARGET_SERVICE)) {
+                    String currentService = values[0].trim().replace("\"", "");
+                    if (currentService.equals(serviceName)) {
                         return values[2].trim().replace("\"", "");
                     }
                 }
