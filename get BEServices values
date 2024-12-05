@@ -1,0 +1,54 @@
+import java.io.*;
+import java.util.*;
+
+public class ServiceMetricsReader {
+    private static final String TARGET_SERVICE = "YourServiceName"; // Replace with your service name
+
+    public static void main(String[] args) {
+        String heapFile = "heap.csv";
+        String memoryFile = "memory.csv";
+        String gcFile = "gc.csv";
+        
+        String heapValue = "0";
+        String memoryValue = "0";
+        String gcValue = "0";
+        
+        try {
+            heapValue = readMetricValue(heapFile);
+            memoryValue = readMetricValue(memoryFile);
+            gcValue = readMetricValue(gcFile);
+            
+            System.out.println("Service: " + TARGET_SERVICE);
+            System.out.println("Heap: " + heapValue);
+            System.out.println("Memory: " + memoryValue);
+            System.out.println("GC: " + gcValue);
+            
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+    
+    private static String readMetricValue(String filePath) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            boolean isFirstLine = true;
+            
+            while ((line = reader.readLine()) != null) {
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue;
+                }
+                
+                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                
+                if (values.length >= 3) {
+                    String serviceName = values[0].trim().replace("\"", "");
+                    if (serviceName.equals(TARGET_SERVICE)) {
+                        return values[2].trim().replace("\"", "");
+                    }
+                }
+            }
+        }
+        return "0";
+    }
+}
