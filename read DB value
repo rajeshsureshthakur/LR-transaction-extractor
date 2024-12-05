@@ -1,0 +1,37 @@
+
+
+import java.io.*;
+
+public class CSVColumnSum {
+    public static void main(String[] args) {
+        String filePath = "input.csv";
+        int columnDSum = 0;
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            boolean isFirstLine = true;
+            
+            while ((line = reader.readLine()) != null) {
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue;
+                }
+                
+                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                
+                if (values.length >= 4) {
+                    try {
+                        columnDSum += Integer.parseInt(values[3].trim().replace("\"", ""));
+                    } catch (NumberFormatException e) {
+                        System.err.println("Warning: Non-numeric value found in column D");
+                    }
+                }
+            }
+            
+            System.out.println("Sum of Column D: " + columnDSum);
+            
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+}
