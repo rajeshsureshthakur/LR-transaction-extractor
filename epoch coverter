@@ -1,0 +1,19 @@
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+public class DateConverter {
+    public static void main(String[] args) {
+        String dateStr = "25/12/23 15:30:45";
+        SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
+        
+        try {
+            Date date = formatter.parse(dateStr);
+            long epochTime = date.getTime();
+            System.out.println("Input date: " + dateStr);
+            System.out.println("Epoch time: " + epochTime);
+        } catch (ParseException e) {
+            System.out.println("Error parsing date: " + e.getMessage());
+        }
+    }
+}
