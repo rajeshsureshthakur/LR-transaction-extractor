@@ -1,0 +1,26 @@
+@echo off
+set /p START_DATE="Enter start date (DD/MM/YY): "
+set /p END_DATE="Enter end date (DD/MM/YY): "
+set /p RELEASE_VERSION="Enter release version: "
+set /p TEST_TYPE="Enter test type: "
+set /p TEST_NAME="Enter test name: "
+
+echo Running Test Suite...
+
+java Test1 %START_DATE% %END_DATE% %RELEASE_VERSION% %TEST_TYPE% %TEST_NAME%
+if errorlevel 1 goto error
+
+java Test2 %START_DATE% %END_DATE% %RELEASE_VERSION% %TEST_TYPE% %TEST_NAME%
+if errorlevel 1 goto error
+
+java Test3 %START_DATE% %END_DATE% %RELEASE_VERSION% %TEST_TYPE% %TEST_NAME%
+if errorlevel 1 goto error
+
+echo All tests completed successfully
+pause
+exit /b 0
+
+:error
+echo Test execution failed
+pause
+exit /b 1
