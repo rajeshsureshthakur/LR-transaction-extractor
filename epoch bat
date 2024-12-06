@@ -1,0 +1,14 @@
+@echo off
+set /p START_DATE="Enter start date (DD/MM/YYYY HH:MM:SS): "
+set /p END_DATE="Enter end date (DD/MM/YYYY HH:MM:SS): "
+
+for /f %%a in ('powershell -Command "& {$date = [datetime]::ParseExact('%START_DATE%', 'dd/MM/yyyy HH:mm:ss', $null); $epoch = (Get-Date $date -UFormat %s); Write-Host $epoch}"') do set START_EPOCH=%%a
+
+for /f %%b in ('powershell -Command "& {$date = [datetime]::ParseExact('%END_DATE%', 'dd/MM/yyyy HH:mm:ss', $null); $epoch = (Get-Date $date -UFormat %s); Write-Host $epoch}"') do set END_EPOCH=%%b
+
+echo Start Date: %START_DATE%
+echo Start Epoch: %START_EPOCH%
+echo End Date: %END_DATE%
+echo End Epoch: %END_EPOCH%
+
+java Test1 %START_DATE% %END_DATE% %START_EPOCH% %END_EPOCH%
