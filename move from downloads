@@ -1,0 +1,51 @@
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+
+public class FileDownloadExample {
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+        // Define paths
+        String downloadDirectory = System.getProperty("user.home") + "/Downloads";  // Default Downloads folder
+        String targetDirectory = System.getProperty("user.dir");  // Current working directory (or specify any other path)
+
+        // Set Chrome options for downloading
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("download.default_directory=" + downloadDirectory);
+        
+        // Initialize WebDriver with options
+        WebDriver driver = new ChromeDriver(options);
+
+        // Navigate to the page and download the file
+        driver.get("https://example.com");  // Change to the page where the file is downloaded
+        driver.findElement(By.id("downloadButton")).click();  // Replace with actual element for download
+
+        // Wait for download to finish (you can adjust the sleep time as per your needs)
+        Thread.sleep(5000);  // Wait for 5 seconds to ensure the file is downloaded
+
+        // Move the downloaded file to the current directory (or specify any path)
+        File sourceFile = new File(downloadDirectory + "/filename.ext");  // Replace with the actual downloaded file name
+        File targetFile = new File(targetDirectory + "/filename.ext");
+
+        if (sourceFile.exists()) {
+            // Move the file
+            Files.move(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("File moved successfully to: " + targetFile.getAbsolutePath());
+        } else {
+            System.out.println("Downloaded file not found in the Downloads folder.");
+        }
+
+        // Optionally, you can use copy instead of move if you want to keep the original file in Downloads
+        // Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+        // Close the driver
+        driver.quit();
+    }
+}
