@@ -1,0 +1,71 @@
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Comparator;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+
+public class FileDownloadExample {
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+        // Get the current working directory (from the "class" folder)
+        String currentWorkingDirectory = System.getProperty("user.dir");
+
+        // Define the path to the 'Files' folder (relative to the current working directory "class" folder)
+        String filesFolderPath = currentWorkingDirectory + "/../Files";  // Move one level up from "class" to "Files"
+
+        // Set the default download directory (usually Downloads folder)
+        String downloadDirectory = System.getProperty("user.home") + "/Downloads"; // Default path for Downloads
+
+        // Set Chrome options to configure the download directory
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("download.default_directory=" + downloadDirectory); // Set download folder
+
+        // Initialize WebDriver with the options
+        WebDriver driver = new ChromeDriver(options);
+
+        // Navigate to the page and trigger file download
+        driver.get("https://example.com");  // Change to the page where the file is downloaded
+        driver.findElement(By.id("downloadButton")).click();  // Replace with actual download button locator
+
+        // Wait for the download to finish (you can adjust the wait time as needed)
+        Thread.sleep(5000);  // Adjust sleep to match the download duration
+
+        // Get the downloaded files in the Downloads directory
+        File downloadDir = new File(downloadDirectory);
+        File[] files = downloadDir.listFiles((dir, name) -> name.startsWith("filename"));  // Filter by the file prefix
+
+        if (files != null && files.length > 0) {
+            // Sort files by last modified timestamp in descending order
+            Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+
+            // Get the most recently modified file
+            File latestFile = files[0]; // The latest file (most recently modified)
+            System.out.println("Latest downloaded file: " + latestFile.getName());
+
+            // Create the 'Files' folder if it doesn't exist
+            File filesFolder = new File(filesFolderPath);
+            if (!filesFolder.exists()) {
+                filesFolder.mkdirs();  // Create the 'Files' directory if it doesn't exist
+            }
+
+            // Define the target path (in the 'Files' folder)
+            File targetFile = new File(filesFolderPath + "/" + latestFile.getName());
+
+            // Move the file from Downloads to the 'Files' folder
+            Files.move(latestFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("File moved successfully to: " + targetFile.getAbsolutePath());
+        } else {
+            System.out.println("No downloaded files found matching the prefix.");
+        }
+
+        // Close the driver
+        driver.quit();
+    }
+}
