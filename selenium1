@@ -22,6 +22,14 @@ Wait for Element Visibility:
 javaCopy// Wait for a specific element to be visible
 wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//div[contains(@class, 'dashboard-content')]")));
 
+ChromeOptions options = new ChromeOptions();
+            Map<String, Object> prefs = new HashMap<>();
+            prefs.put("download.default_directory", downloadPath);
+            prefs.put("download.prompt_for_download", false);
+            prefs.put("download.directory_upgrade", true);
+            prefs.put("safebrowsing.enabled", true);
+            options.setExperimentalOption("prefs", prefs);
+
 
 
 public class VelocityCSVDownloader {
