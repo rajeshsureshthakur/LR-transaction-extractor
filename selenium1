@@ -10,6 +10,15 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
+// By text content
+WebElement loginButton = driver.findElement(By.xpath("//button[contains(text(), 'Login') or contains(text(), 'Sign In')]"));
+
+// By partial text
+WebElement loginButton = driver.findElement(By.xpath("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'login')]"));
+
+// By class name
+WebElement loginButton = driver.findElement(By.xpath("//button[contains(@class, 'login') or contains(@class, 'signin')]"));
+
 public class VelocityCSVDownloader {
     // Configuration parameters
     private static final String BASE_URL = "https://your-velocity-elk-portal-url.com";
