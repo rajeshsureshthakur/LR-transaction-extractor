@@ -15,6 +15,15 @@ WebElement loginButton = driver.findElement(By.xpath("//button[contains(text(), 
 
 WebElement loginButton = driver.findElement(By.cssSelector("[data-test-subj='loginSubmit']"));
 
+wait.until(ExpectedConditions.presenceOfElementLocated(By.id("dashboard-container")));
+
+Wait for Element Visibility:
+
+javaCopy// Wait for a specific element to be visible
+wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//div[contains(@class, 'dashboard-content')]")));
+
+
+
 public class VelocityCSVDownloader {
     // Configuration parameters
     private static final String BASE_URL = "https://your-velocity-elk-portal-url.com";
