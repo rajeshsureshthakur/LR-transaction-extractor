@@ -1,0 +1,115 @@
+@echo off
+setlocal enabledelayedexpansion
+
+REM Get IST start and end times from the user
+set /p ist_start="Enter IST start time (DD/MM/YYYY HH:MM:SS): "
+set /p ist_end="Enter IST end time (DD/MM/YYYY HH:MM:SS): "
+
+REM Extract date and time for start and end times
+set ist_date=%ist_start:~0,10%
+set ist_time=%ist_start:~11,8%
+set ist_date_end=%ist_end:~0,10%
+set ist_time_end=%ist_end:~11,8%
+
+REM Extract hours, minutes, and seconds for start time
+for /f "tokens=1-3 delims=: " %%a in ("%ist_time%") do (
+    set ist_hh=%%a
+    set ist_mm=%%b
+    set ist_ss=%%c
+)
+
+REM Extract hours, minutes, and seconds for end time
+for /f "tokens=1-3 delims=: " %%a in ("%ist_time_end%") do (
+    set ist_hh_end=%%a
+    set ist_mm_end=%%b
+    set ist_ss_end=%%c
+)
+
+REM Convert IST time to total minutes since midnight
+set /a total_minutes=(%ist_hh% * 60) + %ist_mm%
+set /a total_minutes_end=(%ist_hh_end% * 60) + %ist_mm_end%
+
+REM Subtract 10 hours and 30 minutes (630 minutes) for EST conversion
+set /a total_minutes_est=total_minutes - 630
+set /a total_minutes_est_end=total_minutes_end - 630
+
+REM Handle negative minutes (previous day)
+if %total_minutes_est% lss 0 (
+    set /a total_minutes_est+=1440
+    call :adjust_date %ist_date% -1 est_date
+) else (
+    set est_date=%ist_date%
+)
+
+if %total_minutes_est_end% lss 0 (
+    set /a total_minutes_est_end+=1440
+    call :adjust_date %ist_date_end% -1 est_date_end
+) else (
+    set est_date_end=%ist_date_end%
+)
+
+REM Calculate EST hours and minutes
+set /a est_hh=total_minutes_est / 60
+set /a est_mm=total_minutes_est %% 60
+set /a est_hh_end=total_minutes_est_end / 60
+set /a est_mm_end=total_minutes_est_end %% 60
+
+REM Format hours, minutes, and seconds
+if %est_hh% lss 10 set est_hh=0%est_hh%
+if %est_mm% lss 10 set est_mm=0%est_mm%
+if %est_hh_end% lss 10 set est_hh_end=0%est_hh_end%
+if %est_mm_end% lss 10 set est_mm_end=0%est_mm_end%
+
+REM Format EST times
+set est_start=%est_date% %est_hh%:%est_mm%:%ist_ss%
+set est_end=%est_date_end% %est_hh_end%:%est_mm_end%:%ist_ss_end%
+
+REM Output the IST and EST times
+echo IST Start Time: %ist_start%
+echo Converted EST Start Time: %est_start%
+echo IST End Time: %ist_end%
+echo Converted EST End Time: %est_end%
+
+REM Call another BAT file and pass IST and EST times as arguments
+call anotherScript.bat "%ist_start%" "%est_start%" "%ist_end%" "%est_end%"
+
+pause
+exit /b
+
+REM Subroutine to adjust the date
+:adjust_date
+setlocal
+set date=%1
+set adjust=%2
+
+REM Extract day, month, and year
+set /a day=%date:~0,2%
+set /a month=%date:~3,2%
+set /a year=%date:~6,4%
+
+REM Adjust the day
+set /a day+=%adjust%
+
+REM Handle month wrapping (basic)
+if %day% lss 1 (
+    set /a month-=1
+    if %month% lss 1 (
+        set month=12
+        set /a year-=1
+    )
+    if %month%==2 (
+        set /a day=28
+    ) else if %month%==4 if %month%==6 if %month%==9 if %month%==11 (
+        set /a day=30
+    ) else (
+        set /a day=31
+    )
+)
+
+REM Format day and month
+if %day% lss 10 set day=0%day%
+if %month% lss 10 set month=0%month%
+
+REM Return adjusted date
+endlocal & set %3=%day%/%month%/%year%
+exit /b
