@@ -13,11 +13,7 @@ import java.util.Map;
 // By text content
 WebElement loginButton = driver.findElement(By.xpath("//button[contains(text(), 'Login') or contains(text(), 'Sign In')]"));
 
-// By partial text
-WebElement loginButton = driver.findElement(By.xpath("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'login')]"));
-
-// By class name
-WebElement loginButton = driver.findElement(By.xpath("//button[contains(@class, 'login') or contains(@class, 'signin')]"));
+WebElement loginButton = driver.findElement(By.cssSelector("[data-test-subj='loginSubmit']"));
 
 public class VelocityCSVDownloader {
     // Configuration parameters
