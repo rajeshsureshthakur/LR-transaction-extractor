@@ -1,0 +1,52 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Arrays;
+
+public class CSVFilter {
+    public static void main(String[] args) {
+        // Input and output file paths - modify these to match your file locations
+        String inputFile = "input.csv";
+        String outputFile = "output.csv";
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
+            
+            // Read the header line
+            String headerLine = reader.readLine();
+            
+            // Split header and remove first column
+            String[] headers = headerLine.split(",");
+            String[] filteredHeaders = Arrays.copyOfRange(headers, 1, headers.length);
+            
+            // Write filtered header to output file
+            writer.write(String.join(",", filteredHeaders));
+            writer.newLine();
+
+            // Process each data line
+            String line;
+            while ((line = reader.readLine()) != null) {
+                // Split the line by comma - adjust delimiter if needed
+                String[] columns = line.split(",");
+                
+                // Check if column A (index 0) is exactly "200"
+                if (columns.length > 0 && columns[0].trim().equals("200")) {
+                    // Create a new array without the first column
+                    String[] filteredColumns = Arrays.copyOfRange(columns, 1, columns.length);
+                    
+                    // Write filtered line to output file
+                    writer.write(String.join(",", filteredColumns));
+                    writer.newLine();
+                }
+            }
+
+            System.out.println("CSV filtering complete. Output saved to " + outputFile);
+
+        } catch (IOException e) {
+            System.err.println("An error occurred while processing the CSV file:");
+            e.printStackTrace();
+        }
+    }
+}
