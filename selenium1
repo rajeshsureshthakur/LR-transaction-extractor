@@ -29,7 +29,9 @@ ChromeOptions options = new ChromeOptions();
             prefs.put("download.directory_upgrade", true);
             prefs.put("safebrowsing.enabled", true);
             options.setExperimentalOption("prefs", prefs);
-
+options.addArguments("--headless");  // Optional, only for headless mode
+        options.addArguments("--disable-gpu");
+        options.addArguments("--no-sandbox");
 
 
 public class VelocityCSVDownloader {
