@@ -1,0 +1,37 @@
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+
+public class Final {
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.out.println("No date-time argument passed!");
+            return;
+        }
+
+        // Receive the date-time argument
+        String inputDateTime = args[0]; // The entire argument is the date-time
+        System.out.println("Received Date-Time: " + inputDateTime);
+
+        try {
+            // Define the desired format that matches the passed date format
+            SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+
+            // Parse the input date-time into a Date object
+            Date date = formatter.parse(inputDateTime);
+            System.out.println("Parsed Date: " + date);
+
+            // Add 5 hours using Calendar
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(date);
+            calendar.add(Calendar.HOUR_OF_DAY, 5); // Add 5 hours
+            Date newDate = calendar.getTime(); // Get the updated date-time
+
+            // Print the updated date-time in the same format
+            System.out.println("Updated Date-Time (+5 hours): " + formatter.format(newDate));
+        } catch (Exception e) {
+            System.out.println("Invalid date-time format: " + inputDateTime);
+            e.printStackTrace();
+        }
+    }
+}
