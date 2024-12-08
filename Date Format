@@ -1,0 +1,24 @@
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class DateFormatConverter {
+    public static void main(String[] args) {
+        // Input date in "DD/MM/YYYY HH:MM:SS" format
+        String inputDate = "06/12/2024 05:00:00";
+
+        // Define the input format
+        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+        // Parse the input date string to a LocalDateTime object
+        LocalDateTime dateTime = LocalDateTime.parse(inputDate, inputFormatter);
+
+        // Define the output format
+        DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
+
+        // Format the LocalDateTime object to the required string format
+        String outputDate = dateTime.format(outputFormatter);
+
+        // Print the result
+        System.out.println(outputDate);
+    }
+}
